@@ -38,6 +38,8 @@ canvas{display:block;width:100%;height:var(--ch,280px);border-radius:14px}
 .row input{width:100%;min-width:0;text-align:center;font:inherit;font-weight:700;font-size:18px;padding:7px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink)}
 .chips{display:flex;gap:6px}.chips button{flex:1;padding:6px 0;font-size:13px}
 label{font-size:13px;color:var(--mute);display:flex;gap:8px;align-items:center}
+label.tg{justify-content:space-between;color:var(--ink);font-weight:700}
+label.tg input{width:22px;height:22px;padding:0;accent-color:var(--go)}
 label input{width:90px;text-align:center;font:inherit;padding:5px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink)}
 .act{border:0;border-radius:10px;padding:14px;font:inherit;font-weight:800;font-size:18px;color:#fff;background:var(--go)}
 .act.cash{background:var(--gold);color:#1a1d21}.act.cancel{background:var(--stop)}.act.done{background:#4b7f63}.act.lost{background:#7a828a}
@@ -123,21 +125,23 @@ function toast(t,err){const e=$('#toast');e.textContent=t;e.className='toast on'
 let phase='wait',mult=1,crashAt=2,tc=0,countdown=6,hist=[],scroll=0,last=0,riderX=0,wheel=0,parts=[];
 function newCrash(){const a=new Uint32Array(1);crypto.getRandomValues(a);const r=a[0]/4294967296;return Math.min(1000,Math.max(1,Math.floor(97/(1-r))/100))}
 
-const bets=[0,1].map(i=>({i,queued:false,active:false,cashed:false,cm:0,stake:0}));
+const bets=[0,1].map(i=>({i,queued:false,active:false,cashed:false,cm:0,stake:0,auto:false}));
 $('#bets').innerHTML=bets.map(b=>`<div class="bet" id="p${b.i}">
 <div class="row"><button data-d="-10">−</button><input class="stake" type="number" inputmode="numeric" value="${b.i?100:50}"><button data-d="10">+</button></div>
 <div class="chips">${[50,100,500,1000].map(v=>`<button data-v="${v}">${v}</button>`).join('')}</div>
 <label>Auto cash out at <input class="auto" inputmode="decimal" placeholder="off">x</label>
+<label class="tg"><span>Auto bet every ride</span><input class="ab" type="checkbox"></label>
 <button class="act"></button></div>`).join('');
 bets.forEach(b=>{
-  const p=$('#p'+b.i);b.stakeEl=p.querySelector('.stake');b.autoEl=p.querySelector('.auto');b.act=p.querySelector('.act');
+  const p=$('#p'+b.i);b.stakeEl=p.querySelector('.stake');b.autoEl=p.querySelector('.auto');b.act=p.querySelector('.act');b.abEl=p.querySelector('.ab');
+  b.abEl.onchange=()=>{b.auto=b.abEl.checked;if(b.auto)toast('Auto bet on')};
   p.querySelectorAll('[data-d]').forEach(x=>x.onclick=()=>{if(!b.queued&&!b.active)b.stakeEl.value=Math.max(10,(+b.stakeEl.value||0)+ +x.dataset.d)});
   p.querySelectorAll('[data-v]').forEach(x=>x.onclick=()=>{if(!b.queued&&!b.active)b.stakeEl.value=x.dataset.v});
   b.act.onclick=()=>press(b);
 });
 function press(b){
   if(b.active&&!b.cashed&&phase==='fly'){cash(b,mult);return}
-  if(b.queued){b.queued=false;bal+=b.stake;save();tone(300,.08,'square',.06);return}
+  if(b.queued){b.queued=false;bal+=b.stake;if(b.auto){b.auto=false;b.abEl.checked=false}save();tone(300,.08,'square',.06);return}
   if(b.active)return;
   const s=Math.floor(+b.stakeEl.value);
   if(!(s>=10)){toast('Minimum bet is KSh 10',1);return}
@@ -145,12 +149,18 @@ function press(b){
   b.stake=s;bal-=s;b.queued=true;save();tone(520,.08,'square',.06);
 }
 function cash(b,m){const w=Math.floor(b.stake*m*100)/100;bal+=w;b.cashed=true;b.cm=m;save();record(b,m,w);chime();toast('+KSh '+fmt2(w)+' at '+m.toFixed(2)+'x')}
+function autoPlace(b){
+  if(!b.auto||phase!=='wait'||b.queued||b.active)return;
+  const s=Math.floor(+b.stakeEl.value);
+  if(!(s>=10)||s>bal){b.auto=false;b.abEl.checked=false;toast(s>bal?'Auto bet stopped: not enough play money':'Auto bet stopped: minimum bet is KSh 10',1);return}
+  press(b);
+}
 function render(b){
   let t,c='';
   if(b.active&&!b.cashed&&phase==='fly'){t='Cash out KSh '+fmt2(Math.floor(b.stake*mult*100)/100);c='cash'}
   else if(b.active&&b.cashed){t='Cashed out at '+b.cm.toFixed(2)+'x';c='done'}
   else if(b.active&&phase==='crash'){t='Lost KSh '+fmt(b.stake);c='lost'}
-  else if(b.queued){t='Cancel bet (KSh '+fmt(b.stake)+')';c='cancel'}
+  else if(b.queued){t=(b.auto?'Stop auto bet (KSh ':'Cancel bet (KSh ')+fmt(b.stake)+')';c='cancel'}
   else t=(phase==='wait'?'Bet KSh ':'Bet next ride KSh ')+fmt(+b.stakeEl.value||0);
   if(b.act.textContent!==t)b.act.textContent=t;
   b.act.className='act '+c;b.act.disabled=(c==='done'||c==='lost');
@@ -195,7 +205,7 @@ function loop(ts){
       if(phase==='fly')crash(ts);
     }
   }
-  renderHist();draw(dt);bets.forEach(render);renderPanel(ts);requestAnimationFrame(loop);
+  bets.forEach(autoPlace);renderHist();draw(dt);bets.forEach(render);renderPanel(ts);requestAnimationFrame(loop);
 }
 
 function hs(n){const s=Math.sin(n*127.1+311.7)*43758.5453;return s-Math.floor(s)}
