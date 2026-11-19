@@ -100,7 +100,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 @media(min-width:1400px) and (max-height:760px){:root{--ch:320px}}
 </style>
 </head>
-<body>
+<body class="locked">
 <main>
 <div id="top"><header><h1>Boda Hela</h1><div class="hr"><div class="bal">KSh <span id="bal">0</span></div><button id="gear" aria-label="Settings">⚙</button></div></header>
 <div class="set" id="set"><label class="sw"><span>Sounds</span><input type="checkbox" id="optSnd"></label><label class="sw"><span>Rider</span><input type="checkbox" id="optRider"></label><label class="sw"><span>Scenery</span><input type="checkbox" id="optScene"></label></div>
@@ -499,6 +499,76 @@ syncClock();
   window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();dp=e;ib.hidden=false});
   ib.onclick=function(){if(!dp)return;dp.prompt();dp.userChoice.finally(function(){dp=null;ib.hidden=true})};
   window.addEventListener('appinstalled',function(){ib.hidden=true});
+})();
+</script>
+<style>body.locked main,body.locked .toast{visibility:hidden;pointer-events:none}#gate{position:fixed;inset:0;z-index:20;background:var(--bg);display:none;align-items:center;justify-content:center;padding:20px}#gate.on{display:flex}#gate form{width:100%;max-width:340px;display:grid;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}#gate h2{margin:0;font-size:20px}#gate input{font:inherit;padding:12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink)}#gate button{font:inherit;font-weight:800;border:0;border-radius:10px;padding:12px;background:var(--go);color:#fff}#gate .alt{background:transparent;color:var(--mute);font-weight:600}#gate p{margin:0;font-size:12px;color:var(--mute)}#out{font:inherit;font-weight:700;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:6px 10px}</style>
+<div id="gate"><form id="gForm" novalidate><h2>Boda Hela</h2><p>Play money only. 18+. Your balance and bets are private to your account.</p><input id="gName" type="text" placeholder="Full name" autocomplete="name" maxlength="60" hidden><input id="gEmail" type="email" placeholder="Email" autocomplete="email"><input id="gPhone" type="tel" inputmode="tel" placeholder="Phone e.g. 0712 345 678" autocomplete="tel" hidden><input id="gPass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password"><input id="gPass2" type="password" placeholder="Confirm password" autocomplete="new-password" hidden><button id="gGo" type="submit">Sign in</button><button id="gForgot" class="alt" type="button">Forgot password?</button><button id="gAlt" class="alt" type="button">New here? Create account</button><p id="gMsg"></p></form></div><p id="gMsg"></p></form></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+/* Paste your Firebase web app config here (Firebase console > Project settings > Your apps). */
+var FB={apiKey:'AIzaSyDmWbzKkzk-7OYzCYeexYtNSbv-p2NoOvk',authDomain:'boda-hela.firebaseapp.com',projectId:'boda-hela',appId:'1:762687055606:web:df422e34e13eb4b9de2ed7'};
+if(FB.apiKey.indexOf('PASTE')===0){document.body.classList.remove('locked');return} /* not configured: game stays local-only */
+if(!window.firebase){$('#gate').classList.add('on');$('#gMsg').textContent='Could not load sign-in. Connect to the internet and reload.';$('#gGo').disabled=true;return}
+firebase.initializeApp(FB);
+var auth=firebase.auth(),db=firebase.firestore(),uid=null,tmr=null,create=false,prof={name:'',phone:'',email:''},pend=null;
+var g=$('#gate'),msg=$('#gMsg');
+g.classList.add('on');
+function flush(){clearTimeout(tmr);tmr=null;if(!uid)return Promise.resolve();return db.doc('users/'+uid).set({bal:bal,hist:myHist,best:best,name:prof.name,phone:prof.phone,email:prof.email,t:Date.now()}).catch(function(){})}
+function cloud(){if(!uid||tmr)return;tmr=setTimeout(flush,20000)}
+var s0=save,h0=saveH;
+save=function(){s0();cloud()};
+saveH=function(){h0();cloud()};
+document.addEventListener('visibilitychange',function(){if(document.hidden)flush()});
+window.addEventListener('pagehide',flush);
+$('#set').insertAdjacentHTML('beforeend','<div class="sw"><span id="who"></span><button id="out" type="button">Sign out</button></div>');
+$('#out').onclick=function(){
+  if(bets.some(function(b){return b.queued||b.active}))return toast('Finish your bets first',1);
+  flush().then(function(){try{['bc_bal','bc_hist','bc_best'].forEach(function(k){localStorage.removeItem(k)})}catch(e){}return auth.signOut()}).then(function(){location.reload()});
+};
+function norm(v){v=v.replace(/[\s\-()]/g,'');if(/^\+254[17]\d{8}$/.test(v))return v.slice(1);if(/^254[17]\d{8}$/.test(v))return v;if(/^0[17]\d{8}$/.test(v))return '254'+v.slice(1);return null}
+function errTxt(er){var c=(er&&er.code)||'';
+  if(c.indexOf('email-already')>=0)return 'That email already has an account. Sign in instead.';
+  if(c.indexOf('weak')>=0)return 'Password must be 6+ characters.';
+  if(c.indexOf('invalid-email')>=0)return 'That email looks wrong.';
+  if(c.indexOf('network')>=0)return 'No connection. Try again.';
+  if(c.indexOf('too-many')>=0)return 'Too many tries. Wait a while and try again.';
+  if(c.indexOf('operation-not-allowed')>=0)return 'Sign-in is unavailable right now.';
+  return 'Wrong email or password.'}
+function mode(c){create=c;msg.textContent='';$('#gName').hidden=$('#gPhone').hidden=$('#gPass2').hidden=!c;$('#gForgot').hidden=c;$('#gGo').textContent=c?'Create account':'Sign in';$('#gAlt').textContent=c?'Have an account? Sign in':'New here? Create account';$('#gPass').autocomplete=c?'new-password':'current-password'}
+$('#gAlt').onclick=function(){mode(!create)};
+$('#gForgot').onclick=function(){
+  var em=$('#gEmail').value.trim();
+  if(!/^\S+@\S+\.\S+$/.test(em)){msg.textContent='Type your email above first.';return}
+  auth.sendPasswordResetEmail(em).then(function(){msg.textContent='If that email has an account, a reset link is on its way. Check spam too.'}).catch(function(er){msg.textContent=errTxt(er)});
+};
+$('#gForm').onsubmit=function(e){
+  e.preventDefault();msg.textContent='';
+  var em=$('#gEmail').value.trim(),pw=$('#gPass').value;
+  if(!/^\S+@\S+\.\S+$/.test(em)){msg.textContent='Enter a valid email.';return}
+  if(create){
+    var nm=$('#gName').value.trim(),ph=norm($('#gPhone').value);
+    if(nm.length<2){msg.textContent='Enter your full name.';return}
+    if(!ph){msg.textContent='Enter a Kenyan number like 0712 345 678.';return}
+    if(pw.length<6){msg.textContent='Password must be 6+ characters.';return}
+    if(pw!==$('#gPass2').value){msg.textContent='Passwords do not match.';return}
+    pend={name:nm,phone:ph,email:em};
+  }else if(!pw){msg.textContent='Enter your password.';return}
+  $('#gGo').disabled=true;
+  (create?auth.createUserWithEmailAndPassword(em,pw):auth.signInWithEmailAndPassword(em,pw)).catch(function(er){pend=null;msg.textContent=errTxt(er)}).then(function(){$('#gGo').disabled=false});
+};
+auth.onAuthStateChanged(function(u){
+  if(!u){uid=null;document.body.classList.add('locked');g.classList.add('on');return}
+  db.doc('users/'+u.uid).get().then(function(sn){
+    uid=u.uid;
+    if(sn.exists){var d=sn.data();bal=+d.bal||0;myHist=d.hist||[];best=d.best||[];prof={name:d.name||'',phone:d.phone||'',email:d.email||u.email||''}}else{bal=1000;myHist=[];best=[];prof=pend||{name:'',phone:'',email:u.email||''}}pend=null;
+    save();saveH();lastH='';lastR=0;
+    $('#who').textContent=prof.name||u.email||'';
+    document.body.classList.remove('locked');g.classList.remove('on');
+  }).catch(function(){msg.textContent='Could not load your account. Check your connection and try again.'});
+});
 })();
 </script>
 </body>
