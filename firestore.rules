@@ -1,17 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Each player can read and write only their own document.
-    match /users/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow write: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['bal','hist','best','name','phone','email','t'])
-        && request.resource.data.bal is number
-        && request.resource.data.hist is list && request.resource.data.hist.size() <= 50
-        && request.resource.data.best is list && request.resource.data.best.size() <= 5
-        && request.resource.data.name is string && request.resource.data.name.size() <= 60
-        && request.resource.data.phone is string && request.resource.data.phone.size() <= 13
-        && request.resource.data.email is string && request.resource.data.email.size() <= 120;
+    // Nobody can touch the database from the browser. Only the server (Vercel API, using the service account) reads and writes it.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

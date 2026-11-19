@@ -9,11 +9,19 @@ Install: open the deployed URL in Chrome/Edge on Android -> "Install app" button
 On iPhone Safari: Share -> Add to Home Screen.
 After changing any file, bump `V` in sw.js so users get the update.
 
-## Accounts and private history (Firebase)
-1. Firebase console: create a project > Add web app > copy the config into the `FB` object near the end of index.html.
-2. Build > Authentication > Sign-in method > enable Email/Password. Players sign up with name, email, phone number and password, and sign in with email + password. "Forgot password?" sends a Firebase reset email. The name and phone are saved on the player's private profile. No SMS, so it stays on the free Spark plan. Phone numbers are not verified.
-3. Build > Firestore Database > create (production mode) > Rules > paste firestore.rules > Publish.
-4. Authentication > Settings > Authorized domains: add your Vercel domain.
-5. Push to GitHub. Each player's balance, last 50 bets and top wins are saved to users/{their uid}; only they can read them.
-Until the config is pasted, the game runs local-only as before.
-Note: the balance is still decided by the phone. For tamper-proof play, move bet settlement to Cloud Functions (needs Blaze plan).
+## Server-side game (Vercel API + Firebase)
+The crash points, the clock and every balance change now live on the server, so players cannot read crashes in advance, change their phone clock, or edit their balance.
+
+Files: `api/game.js` (bets, cash-outs, balance), `api/round.js` (public ride info, cached 1 second), `lib/game.js` (game logic), `package.json` (firebase-admin).
+
+Setup (once):
+1. Firebase console > Build > Authentication > enable Email/Password.
+2. Firebase console > Build > Firestore Database > create it > Rules > paste `firestore.rules` (denies all browser access) > Publish.
+3. Firebase console > Project settings > Service accounts > Generate new private key. Open the downloaded .json file and copy ALL of its text. Never put this file in GitHub.
+4. Vercel > your project > Settings > Environment Variables, add:
+   - `FIREBASE_SERVICE_ACCOUNT` = the whole JSON text from step 3
+   - `CRASH_SECRET` = a long random phrase (30+ characters). Keep it private; changing it changes every future ride.
+5. Firebase console > Authentication > Settings > Authorized domains: add your Vercel domain.
+6. Push to GitHub so Vercel redeploys (it installs firebase-admin by itself).
+
+Notes: sign-in is email + password. A player can top up to KSh 1,000 only when below KSh 10 (once a minute). Without the two environment variables the game shows an error after sign-in.

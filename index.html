@@ -109,7 +109,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 <div class="bets" id="bets"></div>
 <aside id="side"><div class="tabs"><button class="on" data-tab="players">Riders</button><button data-tab="mine">My bets</button><button data-tab="best">Top wins</button></div>
 <div class="panel" id="panel"></div>
-<footer><button id="reset">Reset play money to KSh 1,000</button> <button id="install" hidden>Install app</button></footer></aside>
+<footer><button id="reset">Top up to KSh 1,000 (only below KSh 10)</button> <button id="install" hidden>Install app</button></footer></aside>
 </main>
 <div class="toast" id="toast"></div>
 <script>
@@ -122,6 +122,7 @@ try{const v=localStorage.getItem('bc_bal');if(v!==null&&!isNaN(+v))bal=+v}catch(
 function save(){bal=Math.round(bal*100)/100;try{localStorage.setItem('bc_bal',bal)}catch(e){}$('#bal').textContent=fmt2(bal)}
 function toast(t,err){const e=$('#toast');e.textContent=t;e.className='toast on'+(err?' err':'');clearTimeout(toast.t);toast.t=setTimeout(()=>e.className='toast',1600)}
 
+window.gameOn=false;
 let phase='wait',mult=1,crashAt=2,tc=0,countdown=6,hist=[],scroll=0,last=0,riderX=0,wheel=0,parts=[];
 function newCrash(){const a=new Uint32Array(1);crypto.getRandomValues(a);const r=a[0]/4294967296;return Math.min(1000,Math.max(1,Math.floor(97/(1-r))/100))}
 
@@ -139,73 +140,92 @@ bets.forEach(b=>{
   p.querySelectorAll('[data-v]').forEach(x=>x.onclick=()=>{if(!b.queued&&!b.active)b.stakeEl.value=x.dataset.v});
   b.act.onclick=()=>press(b);
 });
-function press(b){
-  if(b.active&&!b.cashed&&phase==='fly'){cash(b,mult);return}
-  if(b.queued){b.queued=false;bal+=b.stake;if(b.auto){b.auto=false;b.abEl.checked=false}save();tone(300,.08,'square',.06);return}
-  if(b.active)return;
-  const s=Math.floor(+b.stakeEl.value);
-  if(!(s>=10)){toast('Minimum bet is KSh 10',1);return}
-  if(s>bal){toast('Not enough play money',1);return}
-  b.stake=s;bal-=s;b.queued=true;save();tone(520,.08,'square',.06);
+async function press(b){
+  if(b.busy)return;
+  const fly=b.active&&!b.cashed&&phase==='fly';
+  if(b.active&&!fly)return;
+  let a='bet',body;
+  if(fly){a='cashout';body={slot:b.i}}
+  else if(b.queued){body={slot:b.i,cancel:true};if(b.auto){b.auto=false;b.abEl.checked=false}}
+  else{
+    const s=Math.floor(+b.stakeEl.value);
+    if(!(s>=10)){toast('Minimum bet is KSh 10',1);return}
+    if(s>bal){toast('Not enough play money',1);return}
+    const au=parseFloat(b.autoEl.value);
+    body={slot:b.i,stake:s,auto:au>1.01?au:0};
+    b.autoPinged=false;
+  }
+  b.busy=true;
+  try{await api(a,body);if(a==='bet')tone(body.cancel?300:520,.08,'square',.06)}
+  catch(e){
+    toast(e.msg||'No connection. Try again.',1);
+    if(a==='bet'&&!body.cancel&&b.auto){b.auto=false;b.abEl.checked=false}
+    if(a==='cashout')setTimeout(refreshMe,300);
+  }
+  b.busy=false;
 }
-function cash(b,m){const w=Math.floor(b.stake*m*100)/100;bal+=w;b.cashed=true;b.cm=m;save();record(b,m,w);chime();toast('+KSh '+fmt2(w)+' at '+m.toFixed(2)+'x')}
 function autoPlace(b){
-  if(!b.auto||phase!=='wait'||b.queued||b.active)return;
+  if(!b.auto||phase!=='wait'||!round||b.queued||b.active||b.busy)return;
   const s=Math.floor(+b.stakeEl.value);
   if(!(s>=10)||s>bal){b.auto=false;b.abEl.checked=false;toast(s>bal?'Auto bet stopped: not enough play money':'Auto bet stopped: minimum bet is KSh 10',1);return}
   press(b);
 }
 function render(b){
   let t,c='';
-  if(b.active&&!b.cashed&&phase==='fly'){t='Cash out KSh '+fmt2(Math.floor(b.stake*mult*100)/100);c='cash'}
+  if(b.busy){t='Please wait…';c='cancel'}
+  else if(b.active&&!b.cashed&&phase==='fly'){t='Cash out KSh '+fmt2(Math.floor(b.stake*mult*100)/100);c='cash'}
   else if(b.active&&b.cashed){t='Cashed out at '+b.cm.toFixed(2)+'x';c='done'}
   else if(b.active&&phase==='crash'){t='Lost KSh '+fmt(b.stake);c='lost'}
   else if(b.queued){t=(b.auto?'Stop auto bet (KSh ':'Cancel bet (KSh ')+fmt(b.stake)+')';c='cancel'}
   else t=(phase==='wait'?'Bet KSh ':'Bet next ride KSh ')+fmt(+b.stakeEl.value||0);
   if(b.act.textContent!==t)b.act.textContent=t;
-  b.act.className='act '+c;b.act.disabled=(c==='done'||c==='lost');
-  b.stakeEl.disabled=b.queued||b.active;b.autoEl.disabled=b.active&&phase==='fly';
+  b.act.className='act '+c;b.act.disabled=(c==='done'||c==='lost'||!!b.busy);
+  b.stakeEl.disabled=b.queued||b.active;b.autoEl.disabled=b.queued||b.active;
 }
 let lastHistHtml='';
 function renderHist(){const list=(phase==='crash'?[crashAt].concat(hist):hist).slice(0,20);const h=list.map(h=>`<span class="chip ${h>=10?'hi':h>=2?'mid':''}">${h.toFixed(2)}x</span>`).join('');if(h!==lastHistHtml){lastHistHtml=h;$('#hist').innerHTML=h}}
 
-function startRide(ts){phase='fly';mult=1;crashAt=round.crashAt;engStart();tone(990,.15,'triangle',.1);bets.forEach(b=>{if(b.queued){b.queued=false;b.active=true;b.cashed=false}})}
+function startRide(ts){phase='fly';mult=1;crashAt=round.crashAt||0;engStart();tone(990,.15,'triangle',.1)}
 function crash(ts){
-  phase='crash';tc=ts;mult=crashAt;
+  phase='crash';tc=ts;crashAt=round.crashAt;mult=crashAt;
   engStop();boom();
-  bets.forEach(b=>{if(b.active&&!b.cashed)record(b,0,0)});
-  pending.forEach(r=>{r.c=crashAt});pending=[];saveH();
+  refreshMe();
   for(let i=0;i<(riderOn?34:0);i++)parts.push({x:riderX+30,y:cv.clientHeight*.86,vx:(Math.random()-.5)*260,vy:-Math.random()*180,r:6+Math.random()*10,a:1});
 }
-function waitNext(){phase='wait';mult=1;bets.forEach(b=>{b.active=false;b.cashed=false})}
+function waitNext(){phase='wait';mult=1}
 
 function loop(ts){
   const dt=Math.min(.05,(ts-(last||ts))/1000);last=ts;
-  const now=sNow();round=roundAt(now);hist=round.hist;
+  const now=sNow();
+  if(window.gameOn&&ts-rpT>(phase==='fly'?600:1000)){rpT=ts;pollRound()}
+  if(round)hist=round.hist;
   if(!round){
     if(phase!=='wait')waitNext();
     countdown=0;
   }else{
-    const st=round.startAt,end=st+Math.log(round.crashAt)/K*1000;
-    if(now<st){
+    const st=round.startAt,known=round.crashAt!=null,end=known?st+Math.log(round.crashAt)/K*1000:Infinity;
+    if(known&&now>=end+CRASH_MS){
+      if(phase==='fly')crash(ts);
+      doneN=round.n;round=null;waitNext();countdown=0;
+    }else if(now<st){
       if(phase!=='wait'){if(phase==='fly')crash(ts);waitNext()}
       countdown=(st-now)/1000;
       const k=Math.ceil(countdown);if(k!==lastK){lastK=k;if(k>=1&&k<=3)tone(660,.08,'triangle',.08)}
     }else if(now<end){
       if(phase==='wait')startRide(ts);
       if(phase==='fly'){
-        mult=Math.min(round.crashAt,Math.exp(K*(now-st)/1000));engUpdate();
-        bets.forEach(b=>{const a=parseFloat(b.autoEl.value);if(b.active&&!b.cashed&&a>1.01&&mult>=a)cash(b,a)});
+        mult=Math.min(1000,Math.exp(K*(now-st)/1000));engUpdate();
+        bets.forEach(b=>{const a=parseFloat(b.autoEl.value);if(b.active&&!b.cashed&&!b.autoPinged&&a>1.01&&mult>=a){b.autoPinged=true;refreshMe()}});
       }
     }else{
       if(phase==='wait'){
-        if(bets.some(b=>b.queued))startRide(ts);
+        if(bets.some(b=>b.queued||b.active))startRide(ts);
         else{phase='crash';tc=ts;mult=crashAt=round.crashAt}
       }
       if(phase==='fly')crash(ts);
     }
   }
-  bets.forEach(autoPlace);renderHist();draw(dt);bets.forEach(render);renderPanel(ts);requestAnimationFrame(loop);
+  syncBets();bets.forEach(autoPlace);renderHist();draw(dt);bets.forEach(render);renderPanel(ts);requestAnimationFrame(loop);
 }
 
 function hs(n){const s=Math.sin(n*127.1+311.7)*43758.5453;return s-Math.floor(s)}
@@ -441,51 +461,51 @@ $('#optSnd').onchange=e=>{sndOn=e.target.checked;saveSet();if(!sndOn)engStop();e
 $('#optRider').onchange=e=>{riderOn=e.target.checked;saveSet()};
 $('#optScene').onchange=e=>{sceneOn=e.target.checked;saveSet()};
 document.addEventListener('pointerdown',()=>{if(sndOn)ac()});
-$('#reset').onclick=()=>{if(bets.some(b=>b.queued||b.active))return toast('Finish your bets first',1);bal=1000;save()};
+$('#reset').onclick=()=>{if(bets.some(b=>b.queued||b.active))return toast('Finish your bets first',1);api('reset').then(()=>toast('Play money topped up to KSh 1,000')).catch(e=>toast(e.msg||'No connection. Try again.',1))};
 save();requestAnimationFrame(loop);
 
-/* ===== Non-stop shared rounds (time-based schedule) =====
-   Every ride is a pure function of the clock, so all players see the same
-   ride at the same moment, even when nobody is online. Each hour starts a
-   fresh seeded sequence of rides. Change SALT to get a different sequence. */
-const SALT=20261118,K=.085,WAIT_MS=6000,CRASH_MS=3000,HOUR=3600000;
-let round=null,offset=0;
+/* ===== Server-driven rounds. The server owns the crash points, the clock and every balance change. ===== */
+const K=.085,CRASH_MS=3000,GAP=160;
+let round=null,offset=0,doneN=-1,sbets=null,rpT=0,meBusy=false,bestRtt=1e9,offAt=0,q=Promise.resolve();
 const sNow=()=>Date.now()+offset;
-function hash(a,b){let h=Math.imul(a^0x9E3779B9,0x85EBCA6B)^Math.imul(b+SALT|0,0xC2B2AE35);h^=h>>>13;h=Math.imul(h,0x27D4EB2F);return(h^h>>>15)>>>0}
-function crashFor(hr,i){const R=rng(hash(hr,i));R();R();const r=R();return Math.min(1000,Math.max(1,Math.floor(97/(1-r))/100))}
-const hourCache={};
-function hourRounds(hr){
-  if(hourCache[hr])return hourCache[hr];
-  const list=[],h0=hr*HOUR,h1=h0+HOUR;let cur=h0;
-  for(let i=0;;i++){
-    const c=crashFor(hr,i),st=cur+WAIT_MS,end=st+Math.log(c)/K*1000;
-    if(end+CRASH_MS>h1)break;
-    list.push({n:hr*1000+i,hr,i,startAt:st,crashAt:c,hist:null});cur=end+CRASH_MS;
-  }
-  const ks=Object.keys(hourCache);if(ks.length>6)delete hourCache[ks[0]];
-  return hourCache[hr]=list;
+function call(a,body){
+  if(!window.getToken)return Promise.reject({msg:'Sign in first'});
+  return window.getToken().then(tok=>{
+    const t1=Date.now();
+    return fetch('/api/game',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify(Object.assign({a},body))})
+      .then(r=>r.json().catch(()=>({})).then(d=>({r,d,t1,t2:Date.now()})));
+  }).then(x=>{
+    if(!x.r.ok)throw{status:x.r.status,msg:x.d.error||'Something went wrong'};
+    const rtt=x.t2-x.t1;
+    if(rtt<=bestRtt||x.t2-offAt>30000){bestRtt=rtt;offAt=x.t2;offset=x.d.now-(x.t1+x.t2)/2}
+    applyMe(x.d);return x.d;
+  }).catch(e=>{throw e&&e.msg?e:{msg:'No connection. Try again.'}});
 }
-function histFor(r){
-  const full=hourRounds(r.hr-1).concat(hourRounds(r.hr)),idx=full.indexOf(r);
-  return full.slice(Math.max(0,idx-20),idx).reverse().map(x=>x.crashAt);
+function api(a,body){const p=q.then(()=>call(a,body||{}));q=p.catch(()=>{}).then(()=>new Promise(r=>setTimeout(r,GAP)));return p}
+function applyMe(d){
+  const old=sbets;
+  bal=d.bal;sbets=d.bets||{};myHist=d.hist||[];best=d.best||[];
+  if(old)for(const k in sbets){const n=sbets[k],o=old[k];if(n.res&&n.res.w>0&&!(o&&o.n===n.n&&o.res)){chime();toast('+KSh '+fmt2(n.res.w)+' at '+n.res.m.toFixed(2)+'x')}}
+  save();lastH='';lastR=0;
 }
-function roundAt(t){
-  let hr=Math.floor(t/HOUR);
-  for(let k=0;k<2;k++,hr++){
-    const L=hourRounds(hr);
-    for(const r of L){if(t<r.startAt+Math.log(r.crashAt)/K*1000+CRASH_MS){if(!r.hist)r.hist=histFor(r);return r}}
-  }
+function refreshMe(){if(meBusy||!window.gameOn)return;meBusy=true;api('me').catch(()=>{}).then(()=>{meBusy=false})}
+function pollRound(){
+  fetch('/api/round',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{
+    if(!d||d.n<=doneN)return;
+    if(!round||d.n>round.n||(d.n===round.n&&round.crashAt==null&&d.c!=null))round={n:d.n,startAt:d.st,crashAt:d.c,hist:d.hist||[]};
+  }).catch(()=>{});
 }
-async function syncClock(){
-  try{
-    const t1=Date.now(),res=await fetch(location.href.split('#')[0],{method:'HEAD',cache:'no-store'}),t2=Date.now();
-    const d=Date.parse(res.headers.get('date')||'');if(!d)return;
-    const o=d+500-(t1+t2)/2;
-    offset=Math.abs(o)>2500?o:0;  // only correct a clearly wrong phone clock
-  }catch(e){}
+/* Turns the server's bets into the b.queued / b.active / b.cashed flags the buttons use. */
+function syncBets(){
+  if(!round||!sbets)return;
+  bets.forEach(b=>{
+    const s=sbets[b.i];
+    if(!s||s.n<round.n){b.queued=b.active=b.cashed=false;b.autoPinged=false;return}
+    b.stake=s.stake;
+    if(!s.res&&(s.n>round.n||phase==='wait')){b.queued=true;b.active=b.cashed=false}
+    else{b.queued=false;b.active=true;b.cashed=!!(s.res&&s.res.w>0);b.cm=s.res?s.res.m:0}
+  });
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncClock()});
-syncClock();
 </script>
 <div id="splash" aria-hidden="true"><picture><source media="(orientation:portrait)" srcset="/splash-portrait.jpg"><img src="/splash-16x9.jpg" alt=""></picture></div>
 <script>
@@ -502,10 +522,9 @@ syncClock();
 })();
 </script>
 <style>body.locked main,body.locked .toast{visibility:hidden;pointer-events:none}#gate{position:fixed;inset:0;z-index:20;background:var(--bg);display:none;align-items:center;justify-content:center;padding:20px}#gate.on{display:flex}#gate form{width:100%;max-width:340px;display:grid;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}#gate h2{margin:0;font-size:20px}#gate input{font:inherit;padding:12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink)}#gate button{font:inherit;font-weight:800;border:0;border-radius:10px;padding:12px;background:var(--go);color:#fff}#gate .alt{background:transparent;color:var(--mute);font-weight:600}#gate p{margin:0;font-size:12px;color:var(--mute)}#out{font:inherit;font-weight:700;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:6px 10px}</style>
-<div id="gate"><form id="gForm" novalidate><h2>Boda Hela</h2><p> 18+ only. bet responsibly.</p><input id="gName" type="text" placeholder="Full name" autocomplete="name" maxlength="60" hidden><input id="gEmail" type="email" placeholder="Email" autocomplete="email"><input id="gPhone" type="tel" inputmode="tel" placeholder="Phone e.g. 0712 345 678" autocomplete="tel" hidden><input id="gPass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password"><input id="gPass2" type="password" placeholder="Confirm password" autocomplete="new-password" hidden><button id="gGo" type="submit">Sign in</button><button id="gForgot" class="alt" type="button">Forgot password?</button><button id="gAlt" class="alt" type="button">New here? Create account</button><p id="gMsg"></p></form></div><p id="gMsg"></p></form></div>
+<div id="gate"><form id="gForm" novalidate><h2>Boda Hela</h2><p>Play money only. 18+. Your balance and bets are private to your account.</p><input id="gName" type="text" placeholder="Full name" autocomplete="name" maxlength="60" hidden><input id="gEmail" type="email" placeholder="Email" autocomplete="email"><input id="gPhone" type="tel" inputmode="tel" placeholder="Phone e.g. 0712 345 678" autocomplete="tel" hidden><input id="gPass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password"><input id="gPass2" type="password" placeholder="Confirm password" autocomplete="new-password" hidden><button id="gGo" type="submit">Sign in</button><button id="gForgot" class="alt" type="button">Forgot password?</button><button id="gAlt" class="alt" type="button">New here? Create account</button><p id="gMsg"></p></form></div><p id="gMsg"></p></form></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 (function(){
 /* Paste your Firebase web app config here (Firebase console > Project settings > Your apps). */
@@ -513,20 +532,15 @@ var FB={apiKey:'AIzaSyDmWbzKkzk-7OYzCYeexYtNSbv-p2NoOvk',authDomain:'boda-hela.f
 if(FB.apiKey.indexOf('PASTE')===0){document.body.classList.remove('locked');return} /* not configured: game stays local-only */
 if(!window.firebase){$('#gate').classList.add('on');$('#gMsg').textContent='Could not load sign-in. Connect to the internet and reload.';$('#gGo').disabled=true;return}
 firebase.initializeApp(FB);
-var auth=firebase.auth(),db=firebase.firestore(),uid=null,tmr=null,create=false,prof={name:'',phone:'',email:''},pend=null;
+var auth=firebase.auth(),create=false,pend=null;
 var g=$('#gate'),msg=$('#gMsg');
 g.classList.add('on');
-function flush(){clearTimeout(tmr);tmr=null;if(!uid)return Promise.resolve();return db.doc('users/'+uid).set({bal:bal,hist:myHist,best:best,name:prof.name,phone:prof.phone,email:prof.email,t:Date.now()}).catch(function(){})}
-function cloud(){if(!uid||tmr)return;tmr=setTimeout(flush,20000)}
-var s0=save,h0=saveH;
-save=function(){s0();cloud()};
-saveH=function(){h0();cloud()};
-document.addEventListener('visibilitychange',function(){if(document.hidden)flush()});
-window.addEventListener('pagehide',flush);
+window.getToken=function(){return auth.currentUser?auth.currentUser.getIdToken():Promise.reject(new Error('signed out'))};
 $('#set').insertAdjacentHTML('beforeend','<div class="sw"><span id="who"></span><button id="out" type="button">Sign out</button></div>');
 $('#out').onclick=function(){
   if(bets.some(function(b){return b.queued||b.active}))return toast('Finish your bets first',1);
-  flush().then(function(){try{['bc_bal','bc_hist','bc_best'].forEach(function(k){localStorage.removeItem(k)})}catch(e){}return auth.signOut()}).then(function(){location.reload()});
+  try{['bc_bal','bc_hist','bc_best'].forEach(function(k){localStorage.removeItem(k)})}catch(e){}
+  auth.signOut().then(function(){location.reload()});
 };
 function norm(v){v=v.replace(/[\s\-()]/g,'');if(/^\+254[17]\d{8}$/.test(v))return v.slice(1);if(/^254[17]\d{8}$/.test(v))return v;if(/^0[17]\d{8}$/.test(v))return '254'+v.slice(1);return null}
 function errTxt(er){var c=(er&&er.code)||'';
@@ -560,14 +574,12 @@ $('#gForm').onsubmit=function(e){
   (create?auth.createUserWithEmailAndPassword(em,pw):auth.signInWithEmailAndPassword(em,pw)).catch(function(er){pend=null;msg.textContent=errTxt(er)}).then(function(){$('#gGo').disabled=false});
 };
 auth.onAuthStateChanged(function(u){
-  if(!u){uid=null;document.body.classList.add('locked');g.classList.add('on');return}
-  db.doc('users/'+u.uid).get().then(function(sn){
-    uid=u.uid;
-    if(sn.exists){var d=sn.data();bal=+d.bal||0;myHist=d.hist||[];best=d.best||[];prof={name:d.name||'',phone:d.phone||'',email:d.email||u.email||''}}else{bal=1000;myHist=[];best=[];prof=pend||{name:'',phone:'',email:u.email||''}}pend=null;
-    save();saveH();lastH='';lastR=0;
-    $('#who').textContent=prof.name||u.email||'';
+  if(!u){window.gameOn=false;document.body.classList.add('locked');g.classList.add('on');return}
+  api('me',{profile:pend||{}}).then(function(d){
+    pend=null;window.gameOn=true;rpT=0;
+    $('#who').textContent=d.name||u.email||'';
     document.body.classList.remove('locked');g.classList.remove('on');
-  }).catch(function(){msg.textContent='Could not load your account. Check your connection and try again.'});
+  }).catch(function(e){msg.textContent=(e&&e.msg)||'Could not load your account. Check your connection and try again.'});
 });
 })();
 </script>
