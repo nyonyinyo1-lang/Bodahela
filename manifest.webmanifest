@@ -33,21 +33,5 @@
   ],
   "categories": [
     "games"
-  ],
-  "screenshots": [
-    {
-      "src": "/splash-16x9.jpg",
-      "sizes": "1920x1080",
-      "type": "image/jpeg",
-      "form_factor": "wide",
-      "label": "Boda Hela"
-    },
-    {
-      "src": "/splash-portrait.jpg",
-      "sizes": "900x1049",
-      "type": "image/jpeg",
-      "form_factor": "narrow",
-      "label": "Boda Hela"
-    }
   ]
 }
