@@ -68,21 +68,18 @@ footer{margin-top:14px;font-size:12px;color:var(--mute);line-height:1.5}
 footer button{background:none;border:0;color:var(--ink);text-decoration:underline;font:inherit;padding:0}
 #splash{position:fixed;inset:0;z-index:50;background:radial-gradient(120% 90% at 50% 55%,#1d242d 0%,#0f1318 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;transition:opacity .2s}
 #splash.off{opacity:0;pointer-events:none}
-#splash .glow,#splash .beam,#splash .ttl,#splash .sub{opacity:0}
-#splash .glow{position:absolute;top:-34vmax;right:-34vmax;width:78vmax;height:78vmax;border-radius:50%;background:radial-gradient(circle,rgba(255,214,90,.7),rgba(255,120,30,.2) 40%,transparent 68%)}
-#splash .beam{position:absolute;top:-17vmax;right:0;width:190vmax;height:34vmax;transform-origin:100% 50%;transform:rotate(-22deg);background:linear-gradient(to left,rgba(255,236,160,.95),rgba(255,200,46,.25) 55%,rgba(255,200,46,0));clip-path:polygon(100% 44%,0 0,0 100%,100% 56%);filter:blur(5px);mix-blend-mode:screen}
+#splash video,#splash .shade{position:absolute;inset:0;width:100%;height:100%}
+#splash video{object-fit:cover}
+#splash .shade{background:linear-gradient(180deg,rgba(15,19,24,.25),rgba(15,19,24,.45))}
+#splash .ttl,#splash .sub{opacity:0}
 #splash .ttl{position:relative;margin:0;text-align:center;font-family:Bungee,Impact,"Arial Black",sans-serif;font-weight:400;font-size:clamp(60px,19vw,130px);line-height:.95;letter-spacing:.02em;transform:skewX(-8deg);filter:drop-shadow(0 4px 0 #7d1c0a) drop-shadow(0 0 20px rgba(255,150,30,.55))}
 #splash .ttl span{display:block;color:transparent;-webkit-background-clip:text;background-clip:text;background-repeat:no-repeat;background-size:250% 100%,100% 100%}
 #splash .ttl .a{background-image:linear-gradient(105deg,transparent 40%,#fff 50%,transparent 60%),linear-gradient(180deg,#fff 0%,#cdd4da 50%,#8e99a3 100%)}
 #splash .ttl .b{background-image:linear-gradient(105deg,transparent 40%,#fff 50%,transparent 60%),linear-gradient(180deg,#fff27a 0%,#ffc82e 50%,#ff8a1f 100%)}
 #splash .sub{position:relative;margin-top:16px;font-weight:800;font-size:clamp(14px,4.6vw,24px);letter-spacing:.3em;color:var(--gold);text-shadow:0 0 14px rgba(255,200,46,.6);padding-left:.3em}
-#splash.go .glow{animation:spGlow 2s ease-out forwards}
-#splash.go .beam{animation:spBeam 2s cubic-bezier(.3,.6,.4,1) forwards}
 #splash.go .ttl{animation:spIn .7s cubic-bezier(.2,.9,.3,1.2) .15s forwards}
 #splash.go .ttl span{animation:spShine 1s ease-out .7s forwards}
 #splash.go .sub{animation:spSub .6s ease-out 1s forwards}
-@keyframes spGlow{0%{opacity:0}30%{opacity:1}100%{opacity:.8}}
-@keyframes spBeam{0%{opacity:0;transform:rotate(-22deg)}20%{opacity:1}100%{opacity:.6;transform:rotate(-62deg)}}
 @keyframes spIn{from{opacity:0;transform:skewX(-8deg) scale(1.3)}to{opacity:1;transform:skewX(-8deg) scale(1)}}
 @keyframes spShine{from{background-position:0% 0,0 0}to{background-position:100% 0,0 0}}
 @keyframes spSub{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -524,14 +521,14 @@ function syncBets(){
   });
 }
 </script>
-<div id="splash" aria-hidden="true"><div class="glow"></div><div class="beam"></div><h2 class="ttl"><span class="a">BODA</span><span class="b">HELA</span></h2><div class="sub">DOSIKA na nduthi</div></div>
+<div id="splash" aria-hidden="true"><video id="spvid" muted playsinline preload="auto" poster="/splash-poster.jpg"><source src="/splash-bg.mp4" type="video/mp4"></video><div class="shade"></div><h2 class="ttl"><span class="a">BODA</span><span class="b">HELA</span></h2><div class="sub">DOSIKA na nduthi</div></div>
 <script>
 (function(){
   var sp=document.getElementById('splash'),gone=false;
   function hide(){if(gone)return;gone=true;sp.classList.add('off');setTimeout(function(){sp.remove()},300)}
   /* wait up to 0.3s for the Bungee font, then play the 2s intro */
   var fl=(document.fonts&&document.fonts.load)?document.fonts.load('1em Bungee').catch(function(){}):Promise.resolve();
-  Promise.race([fl,new Promise(function(r){setTimeout(r,300)})]).then(function(){sp.classList.add('go');setTimeout(hide,2000)});
+  Promise.race([fl,new Promise(function(r){setTimeout(r,300)})]).then(function(){sp.classList.add('go');var v=document.getElementById('spvid');if(v){try{var pp=v.play();if(pp&&pp.catch)pp.catch(function(){})}catch(e){}}setTimeout(hide,2000)});
   setTimeout(hide,4000);sp.addEventListener('pointerdown',hide);
   if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){})});
   var dp=null,ib=document.getElementById('install');
