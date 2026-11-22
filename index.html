@@ -53,10 +53,32 @@ label input{width:90px;text-align:center;font:inherit;padding:5px;border-radius:
 .sw{display:flex;justify-content:space-between;align-items:center;padding:12px 0;font-size:15px;color:var(--ink)}
 .sw+.sw{border-top:1px solid var(--line)}
 .sw input{width:22px;height:22px;padding:0;accent-color:var(--go)}
-.tabs{display:flex;gap:6px;margin-top:14px}
-.tabs button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:9px 0;font:inherit;font-weight:700}
-.tabs button.on{background:var(--ink);color:var(--bg)}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-top:8px;padding:6px 10px;max-height:340px;overflow-y:auto}
+.tabs{display:flex;gap:4px;margin-top:14px;background:var(--card);border-radius:99px;padding:4px}
+.tabs button{flex:1;border:0;background:transparent;color:var(--mute);border-radius:99px;padding:9px 0;font:inherit;font-weight:600}
+.tabs button.on{background:var(--line);color:var(--ink)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;margin-top:8px;padding:8px}
+.plist{max-height:340px;overflow-y:auto}
+#psum:empty{display:none}
+.cvw{position:relative}
+.pcount{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;gap:8px;padding:3px 12px 3px 4px;border-radius:99px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.1);font-weight:700;font-size:15px;color:#fff;pointer-events:none}
+.pcount[hidden]{display:none}
+.av{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;font-style:normal;font-size:15px;flex:none}
+.avs{display:inline-flex}.avs .av{margin-left:-9px;border:2px solid #2d9a2d;width:32px;height:32px}.avs .av:first-child{margin-left:0}
+.rsum{background:var(--bg);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.rtop{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.rc{margin-top:6px;font-size:15px;color:var(--mute)}.rc b{color:var(--ink);font-weight:700}
+.rr{text-align:right}.rr b{display:block;font-size:26px;line-height:1.1;font-weight:800}.rr small{color:var(--mute);font-size:14px}
+.bar{height:8px;border-radius:99px;background:var(--card);margin-top:12px;overflow:hidden}.bar i{display:block;height:100%;background:#3aa51a;border-radius:99px;transition:width .4s}
+.stk{margin-top:8px;font-size:13px;color:var(--mute)}.stk b{color:var(--ink)}
+.pr{display:grid;grid-template-columns:1.2fr 1.1fr .8fr 1.1fr;align-items:center;gap:6px;padding:6px 14px 6px 8px;border-radius:99px;background:var(--bg);border:1px solid transparent;margin-bottom:6px;font-size:14px;font-weight:600}
+.pr>span:nth-child(2),.pr>span:nth-child(4){text-align:right}.pr>span:nth-child(3){text-align:center}
+.pr.ph{background:none;font-size:12px;color:var(--mute);font-weight:500;padding:2px 14px 2px 8px;margin-bottom:2px}
+.pn{display:flex;align-items:center;gap:8px;min-width:0}.pn b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr.won{background:rgba(58,165,26,.14);border-color:rgba(58,165,26,.6)}
+.pr.me{border-color:var(--gold)}
+.px i{font-style:normal;font-weight:800;font-size:12px;padding:2px 8px;border-radius:99px;background:#1e5f9c;color:#fff}.px i.m2{background:#7b3fc4}.px i.m3{background:#c2358f}
+.pw{color:#6fe04a;font-weight:700}
+@media(max-width:420px){.pr{font-size:13px;padding:5px 10px 5px 6px;gap:4px}.pr .av{width:24px;height:24px;font-size:13px}.pn{gap:6px}}
 .sum{font-size:13px;color:var(--mute);padding:6px 0}
 .r{display:grid;grid-template-columns:1.2fr 1fr .9fr 1.1fr;gap:6px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
 .r span:nth-child(n+2){text-align:right}
@@ -103,7 +125,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
   .bets{grid-area:bets;grid-template-columns:1fr 1fr;margin-top:10px}
   #side{grid-area:side}
   .tabs{margin-top:0}
-  .panel{max-height:min(62vh,560px)}
+  .plist{max-height:min(54vh,500px)}
   .set{right:0;top:52px}
   h1{font-size:26px}
   .bal{font-size:17px;padding:8px 14px}
@@ -119,10 +141,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 <div id="top"><header><h1>Boda Hela</h1><div class="hr"><div class="bal">KSh <span id="bal">0</span></div><button id="gear" aria-label="Settings">⚙</button></div></header>
 <div class="set" id="set"><label class="sw"><span>Sounds</span><input type="checkbox" id="optSnd"></label><label class="sw"><span>Rider</span><input type="checkbox" id="optRider"></label><label class="sw"><span>Scenery</span><input type="checkbox" id="optScene"></label></div>
 <div class="hist" id="hist"></div>
-<canvas id="cv"></canvas></div>
+<div class="cvw"><canvas id="cv"></canvas><div class="pcount" id="pcount" hidden></div></div></div>
 <div class="bets" id="bets"></div>
 <aside id="side"><div class="tabs"><button class="on" data-tab="players">Riders</button><button data-tab="mine">My bets</button><button data-tab="best">Top wins</button></div>
-<div class="panel" id="panel"></div>
+<div class="panel" id="panel"><div id="psum"></div><div class="plist" id="plist"></div></div>
 <footer><button id="reset">Top up to KSh 1,000 (only below KSh 10)</button> <button id="install" hidden>Install app</button></footer></aside>
 </main>
 <div class="toast" id="toast"></div>
@@ -212,6 +234,8 @@ function loop(ts){
   const dt=Math.min(.05,(ts-(last||ts))/1000);last=ts;
   const now=sNow();
   if(window.gameOn&&ts-rpT>(phase==='fly'?600:1000)){rpT=ts;pollRound()}
+  if(round&&round.n!==rdN){rdN=round.n;rdT=0}
+  if(window.gameOn&&!document.hidden&&ts-rdT>2000){rdT=ts;pollRiders()}
   if(round)hist=round.hist;
   if(!round){
     if(phase!=='wait')waitNext();
@@ -440,22 +464,28 @@ function draw(dt){
     ctx.shadowBlur=0;
   }
 }
-let myHist=[],best=[],pending=[],tab='players',lastR=0,lastH='';
+let myHist=[],best=[],pending=[],tab='players',lastR=0,lastH='',lastS='',lastP='';
 try{myHist=JSON.parse(localStorage.getItem('bc_hist')||'[]');best=JSON.parse(localStorage.getItem('bc_best')||'[]')}catch(e){}
 function saveH(){try{localStorage.setItem('bc_hist',JSON.stringify(myHist));localStorage.setItem('bc_best',JSON.stringify(best))}catch(e){}}
 function record(b,m,w){const r={s:b.stake,m,w,c:m>0?0:crashAt,t:Date.now()};if(m>0)pending.push(r);myHist.unshift(r);myHist=myHist.slice(0,50);if(w>0){best.push(r);best.sort((x,y)=>y.w-x.w);best=best.slice(0,5)}saveH()}
 function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function renderPanel(ts){
-  if(ts-lastR<250)return;lastR=ts;let h='';
+  if(ts-lastR<250)return;lastR=ts;let h='',sh='';
+  const rv=ridersView(),pc=rv.top.map(k=>av(k)).join('');
+  const ph=rv.players?`<span class="avs">${pc}</span><span>${rv.players.toLocaleString()}</span>`:'';
+  if(ph!==lastP){lastP=ph;const e=$('#pcount');e.innerHTML=ph;e.hidden=!ph}
   if(tab==='players'){
-    const me=bets.filter(b=>b.queued||b.active).map(b=>({n:'You',s:b.stake,st:b.cashed?1:(b.active&&phase==='crash'?2:0),w:b.cashed?Math.floor(b.stake*b.cm*100)/100:0,m:b.cm,me:1}));
-    h=me.length?'<div class="r h"><span>Rider</span><span>Stake</span><span>Cashed out</span><span>Win</span></div>'+me.map(p=>`<div class="r${p.st===1?' w':p.st===2?' l':''} me"><span>${p.n}</span><span>${fmt(p.s)}</span><span>${p.st===1?p.m.toFixed(2)+'x':'-'}</span><span>${p.st===1?'+'+fmt(p.w):p.st===2?'0':''}</span></div>`).join(''):'<div class="empty">No bets on this ride. Place a bet to see it here.</div>';
+    if(rv.n){
+      h='<div class="pr ph"><span>Player</span><span>Bet KSh</span><span>X</span><span>Win KSh</span></div>'+rv.rows.slice(0,150).map(p=>`<div class="pr${p.st===1?' won':''}${p.me?' me':''}"><span class="pn">${av(p.k)}<b>${esc(p.n)}</b></span><span>${f2(p.s)}</span><span class="px">${p.st===1?`<i class="${p.m>=10?'m3':p.m>=2?'m2':''}">${p.m.toFixed(2)}x</i>`:''}</span><span class="pw">${p.st===1?f2(p.w):''}</span></div>`).join('');
+    }else h='<div class="empty">No bets on this ride yet. Place a bet to be first.</div>';
+    sh=`<div class="rsum"><div class="rtop"><div><div class="avs">${rv.top.map(k=>av(k)).join('')}</div><div class="rc"><b>${rv.n-rv.cashed}/${rv.n}</b> Bets</div></div><div class="rr"><b>${f2(rv.win)}</b><small>Total win KSh</small></div></div><div class="bar"><i style="width:${rv.n?rv.cashed/rv.n*100:0}%"></i></div><div class="stk">Total bets <b>KSh ${f2(rv.staked)}</b></div></div>`;
   }else if(tab==='mine'){
     h=myHist.length?'<div class="r h"><span>Time</span><span>Stake</span><span>Crash</span><span>Result</span></div>'+myHist.map(r=>`<div class="r${r.w>0?' w':' l'}"><span>${new Date(r.t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span><span>${fmt(r.s)}</span><span>${r.c?r.c.toFixed(2)+'x':'-'}</span><span>${r.w>0?'+'+fmt2(r.w-r.s)+' ('+r.m.toFixed(2)+'x)':'-'+fmt(r.s)}</span></div>`).join(''):'<div class="empty">No bets yet. Your last 50 bets will show here.</div>';
   }else{
     h=best.length?'<div class="sum">Your five biggest wins</div><div class="r h"><span>Win</span><span>Stake</span><span>Multiplier</span><span>Date</span></div>'+best.map(r=>`<div class="r w"><span>KSh ${fmt2(r.w)}</span><span>${fmt(r.s)}</span><span>${r.m.toFixed(2)}x</span><span>${new Date(r.t).toLocaleDateString([],{day:'numeric',month:'short'})}</span></div>`).join(''):'<div class="empty">No wins yet. Cash out a bet and your best wins will be kept here.</div>';
   }
-  if(h!==lastH){$('#panel').innerHTML=h;lastH=h}
+  if(h!==lastH){$('#plist').innerHTML=h;lastH=h}
+  if(sh!==lastS){$('#psum').innerHTML=sh;lastS=sh}
 }
 document.querySelectorAll('.tabs button').forEach(x=>x.onclick=()=>{tab=x.dataset.tab;document.querySelectorAll('.tabs button').forEach(y=>y.classList.toggle('on',y===x));lastR=0});
 let sndOn=true,riderOn=true,sceneOn=true,AC=null,eng=null,lastK=0;
@@ -498,7 +528,7 @@ function call(a,body){
 function api(a,body){const p=q.then(()=>call(a,body||{}));q=p.catch(()=>{}).then(()=>new Promise(r=>setTimeout(r,GAP)));return p}
 function applyMe(d){
   const old=sbets;
-  bal=d.bal;sbets=d.bets||{};myHist=d.hist||[];best=d.best||[];
+  bal=d.bal;if(d.id)myId=d.id;sbets=d.bets||{};myHist=d.hist||[];best=d.best||[];
   if(old)for(const k in sbets){const n=sbets[k],o=old[k];if(n.res&&n.res.w>0&&!(o&&o.n===n.n&&o.res)){chime();toast('+KSh '+fmt2(n.res.w)+' at '+n.res.m.toFixed(2)+'x')}}
   save();lastH='';lastR=0;
 }
@@ -510,6 +540,28 @@ function pollRound(){
   }).catch(()=>{});
 }
 /* Turns the server's bets into the b.queued / b.active / b.cashed flags the buttons use. */
+
+/* ===== Everyone's bets (Aviator-style Riders list + player count on the game screen) ===== */
+let rid={rounds:[]},myId='',rdT=0,rdN=-1;
+const f2=n=>(+n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mask=n=>{n=String(n||'Rider').replace(/\.$/,'').replace(/\s+/g,'');return n.length<2?n+'***':n[0]+'***'+n[n.length-1]};
+const EMO=['🏍️','🦁','🐯','🦅','🐆','🔥','🌴','🎯','👟','⚡','🦊','🐘'];
+function av(k){let h=0;for(const c of String(k))h=(h*31+c.charCodeAt(0))>>>0;const hue=h%360;return `<i class="av" style="background:linear-gradient(135deg,hsl(${hue},65%,48%),hsl(${(hue+40)%360},65%,28%))">${EMO[h%EMO.length]}</i>`}
+function pollRiders(){fetch('/api/riders',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(d&&d.rounds){rid=d;lastR=0}}).catch(()=>{})}
+function ridersView(){
+  const cur=rid.rounds.find(x=>round&&x.n===round.n)||(round?null:rid.rounds[0]);
+  const rows=((cur&&cur.bets)||[]).filter(p=>p.k!==myId).map(p=>({k:p.k,n:mask(p.u),s:p.s,st:p.st,m:p.m,w:p.w}));
+  bets.forEach(b=>{
+    const s=sbets&&sbets[b.i];
+    if(!round||!(b.active||(b.queued&&s&&s.n===round.n)))return;
+    rows.push({k:myId||'me',n:'You',s:b.stake,st:b.cashed?1:(b.active&&phase==='crash'?2:0),m:b.cm,w:b.cashed?Math.floor(b.stake*b.cm*100)/100:0,me:1});
+  });
+  rows.sort((x,y)=>y.s-x.s);
+  let win=0,staked=0,cashed=0;const pl=[];
+  rows.forEach(p=>{staked+=p.s;if(p.st===1){cashed++;win+=p.w}if(!pl.includes(p.k))pl.push(p.k)});
+  return {rows,n:rows.length,cashed,win,staked,players:pl.length,top:pl.slice(0,3)};
+}
 function syncBets(){
   if(!round||!sbets)return;
   bets.forEach(b=>{
