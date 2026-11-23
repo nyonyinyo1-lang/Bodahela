@@ -1,4 +1,4 @@
-const g = require('../lib/game');
+const g = require('../lib/engine');
 /* Everyone's bets for the ride on screen and the next one. Cached 2 seconds at the edge so many players cost one read pair per 2 seconds. */
 module.exports = async (req, res) => {
   try {

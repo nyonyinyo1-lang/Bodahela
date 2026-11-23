@@ -1,4 +1,4 @@
-const g = require('../lib/game');
+const g = require('../lib/engine');
 /* Public round info. Cached for 1 second at the edge so many players cost one function call per second. */
 module.exports = (req, res) => {
   try {
