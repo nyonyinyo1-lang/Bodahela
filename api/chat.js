@@ -9,7 +9,7 @@ module.exports = async (req, res) => {
       let dec;
       try { dec = await g.admin().auth().verifyIdToken(tok); } catch (e) { throw g.err(401, 'Sign in again'); }
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-      return res.status(200).json(await g.chatSend(dec, body.x));
+      return res.status(200).json(body.like ? await g.chatLike(dec, body.like) : await g.chatSend(dec, body.x));
     }
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=2');
     res.status(200).json(await g.chatList());
