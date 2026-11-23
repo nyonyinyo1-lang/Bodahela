@@ -12,7 +12,7 @@ After changing any file, bump `V` in sw.js so users get the update.
 ## Server-side game (Vercel API + Firebase)
 The crash points, the clock and every balance change now live on the server, so players cannot read crashes in advance, change their phone clock, or edit their balance.
 
-Files: `api/game.js` (bets, cash-outs, balance), `api/round.js` (public ride info, cached 1 second), `lib/game.js` (game logic), `package.json` (firebase-admin).
+Files: `api/play.js` (bets, cash-outs, balance), `api/round.js` (public ride info, cached 1 second), `lib/engine.js` (game logic), `package.json` (firebase-admin).
 
 Setup (once):
 1. Firebase console > Build > Authentication > enable Email/Password.
